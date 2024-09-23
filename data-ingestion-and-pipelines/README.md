@@ -1,0 +1,3 @@
+# Source Systems, Data Ingestion and Pipelines
+
+This course discusses various types of source systems including RDBMS, object storage and streaming data sources. This course also talks about how to set up ingestion from various source systems including automation of some of the pipeline tasks and monitoring data quality. Lastly, this course also teaches about orchestration, monitoring and automation of pipelines using Airflow and Terraform.
