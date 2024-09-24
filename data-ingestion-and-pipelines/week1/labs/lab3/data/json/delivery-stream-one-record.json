@@ -1,0 +1,71 @@
+{
+    "session_id": "45ba9939-df9c-4ca9-a11d-2786b63983fd",
+    "customer_number": 478,
+    "city": "Pasadena",
+    "country": "USA",
+    "credit_limit": 59811,
+    "browse_history": [
+        {
+            "product_code": "S50_1514",
+            "quantity": "1",
+            "in_shopping_cart": true
+        },
+        {
+            "product_code": "S18_1342",
+            "quantity": "1",
+            "in_shopping_cart": false
+        },
+        {
+            "product_code": "S700_1938",
+            "quantity": "7",
+            "in_shopping_cart": true
+        }
+    ],
+    "recommended_items": [
+        {
+            "id": "S12_1108",
+            "score": 0.7991661648934496
+        },
+        {
+            "id": "S18_2325",
+            "score": 0.7757266230678397
+        },
+        {
+            "id": "S18_1589",
+            "score": 0.6731320331167012
+        },
+        {
+            "id": "S24_3856",
+            "score": 0.6657197007471041
+        },
+        {
+            "id": "S10_1949",
+            "score": 0.6148422263794373
+        }
+    ],
+    "similar_items": {
+        "product_code": "S50_1514",
+        "similar_items": [
+            {
+                "id": "S18_2238",
+                "distance": 0.7111176212606649
+            },
+            {
+                "id": "S12_1099",
+                "distance": 0.8128645620864546
+            },
+            {
+                "id": "S24_3969",
+                "distance": 0.8139055007312936
+            },
+            {
+                "id": "S18_3259",
+                "distance": 0.8341333315091493
+            },
+            {
+                "id": "S18_2949",
+                "distance": 0.8714841220893687
+            }
+        ]
+    }
+}
