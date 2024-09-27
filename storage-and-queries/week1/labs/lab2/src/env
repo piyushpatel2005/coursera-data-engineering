@@ -1,0 +1,4 @@
+NEO4JHOST=<Neo4j-DNS-Connection>
+PORT=7687
+USERNAME=neo4j
+PASSWORD=adminneo4j
