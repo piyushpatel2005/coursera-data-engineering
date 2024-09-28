@@ -1,0 +1,8 @@
+pyflink==1.0
+urllib3==1.26.18
+Cython==3.0.5
+awswrangler==3.7.3
+jupyterlab==4.2.0
+pandas==2.2.2
+apache-flink==1.19.0
+ruamel.yaml==0.18.6

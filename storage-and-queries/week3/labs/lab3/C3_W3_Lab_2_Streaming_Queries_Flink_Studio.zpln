@@ -1,0 +1,1137 @@
+﻿{
+  "paragraphs": [
+    {
+      "text": "%md\n# Week 3 Lab 2: Streaming Queries with Apache Flink\n\nWelcome to Apache Zeppelin. Zeppeling is a web-based multi-purpose notebook that enables interactive data analysis and visualization. It supports multiple languages including Python, Scala, SQL, and more. In Zeppelin there is a concept named interpreters. An interpreter allows any language or data-processing-backend to be plugged into Zeppelin. Interpreters in Zeppelin are essentially components that allow the execution of code written in different languages or for different data processing engines within the same notebook environment. Each interpreter is associated with a specific language or processing engine and is prefixed with a special syntax (e.g., %python, %spark, %sql) to indicate the type of code to be executed. For example, this cell uses the markdown interpreter `%md`. During this lab you will use Apache Flink to process streaming data; in particular, you will use [PyFlink](https://nightlies.apache.org/flink/flink-docs-master/api/python/). PyFlink is the Python API for Apache Flink, allowing to write Flink applications in Python. On the other hand, Apache Flink is an open-source stream processing framework that enables scalable, high-throughput, low-latency data stream and batch processing.\n\n\nIn this notebook you will interact with PyFlink through the interpreter `%flink.pyflink`; you will see this command at the beginning of each of the following cells. First, will import some necessary packages from PyFlink.",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:00:49+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h1>Week 3 Lab 2: Streaming Queries with Apache Flink</h1>\n<p>Welcome to Apache Zeppelin. Zeppeling is a web-based multi-purpose notebook that enables interactive data analysis and visualization. It supports multiple languages including Python, Scala, SQL, and more. In Zeppelin there is a concept named interpreters. An interpreter allows any language or data-processing-backend to be plugged into Zeppelin. Interpreters in Zeppelin are essentially components that allow the execution of code written in different languages or for different data processing engines within the same notebook environment. Each interpreter is associated with a specific language or processing engine and is prefixed with a special syntax (e.g., %python, %spark, %sql) to indicate the type of code to be executed. For example, this cell uses the markdown interpreter <code>%md</code>. During this lab you will use Apache Flink to process streaming data; in particular, you will use <a href=\"https://nightlies.apache.org/flink/flink-docs-master/api/python/\">PyFlink</a>. PyFlink is the Python API for Apache Flink, allowing to write Flink applications in Python. On the other hand, Apache Flink is an open-source stream processing framework that enables scalable, high-throughput, low-latency data stream and batch processing.</p>\n<p>In this notebook you will interact with PyFlink through the interpreter <code>%flink.pyflink</code>; you will see this command at the beginning of each of the following cells. First, will import some necessary packages from PyFlink.</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743575_1363825085",
+      "id": "paragraph_1717194560441_490068315",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:00:49+0000",
+      "dateFinished": "2024-08-22T13:00:49+0000",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:7870"
+    },
+    {
+      "text": "%flink.pyflink\nimport os\nimport json\n\nfrom datetime import datetime\nfrom pyflink.common import Row\nfrom pyflink.table.expressions import col, lit\nfrom pyflink.table import (EnvironmentSettings, StreamTableEnvironment, TableEnvironment, TableDescriptor, Schema,\n                           DataTypes, FormatDescriptor)\nfrom pyflink.datastream import StreamExecutionEnvironment\nfrom pyflink.table.window import Slide\nfrom pyflink.table.udf import udf",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:48:11+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743576_604210884",
+      "id": "paragraph_1717188870999_700653453",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:48:11+0000",
+      "dateFinished": "2024-08-22T12:48:59+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7871"
+    },
+    {
+      "text": "%md\n\nDuring this lab you will use the PyFilnk's [Table API](https://nightlies.apache.org/flink/flink-docs-release-1.19/docs/dev/python/table/intro_to_table_api/). The Table API is a high-level API for batch and stream processing of data that is part of Apache Flink. It provides a SQL-like interface to define and execute data processing pipelines. The Table API allows you to work with structured data in a declarative manner, making it easier to write complex data transformations and aggregations. There is another API in PyFlink named the DataStream API, but it is beyond the scope of this lab. The DataStream API is a low-level API designed for complex event-driven applications and stream processing. If you want to know more about this API, you can always \ncheck the [documentation](https://nightlies.apache.org/flink/flink-docs-release-1.19/docs/dev/python/datastream/intro_to_datastream_api/#create-using-table--sql-connectors)\n\n\nIn the Table API there are some important concepts:\n* `TableEnvironment` is the central concept of the Table API in PyFlink, it is responsible of manage tables and metadata, configuration, and execution of table operations.\n* A `Table` represents a logical set of rows with a schema. Tables are the primary abstraction for performing data transformations. It does not contain the data itself in any way. Instead, it describes how to read data from a table source, and how to eventually write data to a table sink.\n* The `Expressions` are used to define operations on columns in a Table. \n\nFirst, set up the environment for executing table programs in streaming mode with the following lines:",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:00:53+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>During this lab you will use the PyFilnk&rsquo;s <a href=\"https://nightlies.apache.org/flink/flink-docs-release-1.19/docs/dev/python/table/intro_to_table_api/\">Table API</a>. The Table API is a high-level API for batch and stream processing of data that is part of Apache Flink. It provides a SQL-like interface to define and execute data processing pipelines. The Table API allows you to work with structured data in a declarative manner, making it easier to write complex data transformations and aggregations. There is another API in PyFlink named the DataStream API, but it is beyond the scope of this lab. The DataStream API is a low-level API designed for complex event-driven applications and stream processing. If you want to know more about this API, you can always<br />\ncheck the <a href=\"https://nightlies.apache.org/flink/flink-docs-release-1.19/docs/dev/python/datastream/intro_to_datastream_api/#create-using-table--sql-connectors\">documentation</a></p>\n<p>In the Table API there are some important concepts:</p>\n<ul>\n<li><code>TableEnvironment</code> is the central concept of the Table API in PyFlink, it is responsible of manage tables and metadata, configuration, and execution of table operations.</li>\n<li>A <code>Table</code> represents a logical set of rows with a schema. Tables are the primary abstraction for performing data transformations. It does not contain the data itself in any way. Instead, it describes how to read data from a table source, and how to eventually write data to a table sink.</li>\n<li>The <code>Expressions</code> are used to define operations on columns in a Table.</li>\n</ul>\n<p>First, set up the environment for executing table programs in streaming mode with the following lines:</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743576_2010094075",
+      "id": "paragraph_1717194583307_101023175",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:00:53+0000",
+      "dateFinished": "2024-08-22T13:00:53+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7872"
+    },
+    {
+      "text": "%flink.pyflink\nenv_settings = EnvironmentSettings.in_streaming_mode()\ntable_env = TableEnvironment.create(env_settings)",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:50:00+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743576_609026724",
+      "id": "paragraph_1717188907018_1754043670",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:50:00+0000",
+      "dateFinished": "2024-08-22T12:50:02+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7873"
+    },
+    {
+      "text": "%md \nThe first line of the previous cell creates an `EnvironmentSettings` object configured for streaming mode store at the variable `env_settings`. `EnvironmentSetting`s is used to specify the characteristics of the execution environment for Flink’s Table API.\n\nThe second line creates a `TableEnvironment` based on the settings provided in the `env_settings` and stores it in `table_env`. Now, you will use the table environment object just created to develop the tables and queries for your streaming dataset. First, you will create a table named `source_stream`. Remember that tables do not contain the data itself, but help you to describe how to read the data from the source streaming. For that, you will create a table with the schema of the dataset that arrives from your input streaming. As an example, the data that you will ingest looks like this:\n\n```json\n{\n    'order_id': '1f4da8b2-73d0-49d5-9762-3e2e0a3cf004', \n    'order_timestamp': '2024-04-04T15:32:03', \n    'order_date': '2024-04-04', \n    'customer_number': 198, \n    'customer_visit_number': 1,\n    'customer_city': 'Makati City', \n    'customer_country': 'Philippines',\n    'customer_credit_limit': 60237,\n    'device_type': 'desktop', \n    'browser': 'Opera/9.32.(Windows 98; tig-ER) Presto/2.9.179 Version/10.00', \n    'operating_system': 'Android', \n    'product_code': 'S32_1268', \n    'product_line': 'Trucks and Buses',\n    'product_unitary_price': 96.31, \n    'quantity': 10, \n    'total_price': 963.1,\n    'traffic_source': 'www.hardin-green.com'\n}\n```\n\nIdentify the [data type](https://nightlies.apache.org/flink/flink-docs-release-1.19/docs/dev/python/table/python_types/) of each field and see how the table will be created below. Note that you can set the `order_timestamp` field as `TIMESTAMP(0)`; this data type means the timestamp will have zero fractional digits in the seconds field, effectively truncating any millisecond, microsecond, or nanosecond parts. This means it represents a precise date and time down to the second.",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:00:56+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>The first line of the previous cell creates an <code>EnvironmentSettings</code> object configured for streaming mode store at the variable <code>env_settings</code>. <code>EnvironmentSetting</code>s is used to specify the characteristics of the execution environment for Flink’s Table API.</p>\n<p>The second line creates a <code>TableEnvironment</code> based on the settings provided in the <code>env_settings</code> and stores it in <code>table_env</code>. Now, you will use the table environment object just created to develop the tables and queries for your streaming dataset. First, you will create a table named <code>source_stream</code>. Remember that tables do not contain the data itself, but help you to describe how to read the data from the source streaming. For that, you will create a table with the schema of the dataset that arrives from your input streaming. As an example, the data that you will ingest looks like this:</p>\n<pre><code class=\"language-json\">{\n    'order_id': '1f4da8b2-73d0-49d5-9762-3e2e0a3cf004', \n    'order_timestamp': '2024-04-04T15:32:03', \n    'order_date': '2024-04-04', \n    'customer_number': 198, \n    'customer_visit_number': 1,\n    'customer_city': 'Makati City', \n    'customer_country': 'Philippines',\n    'customer_credit_limit': 60237,\n    'device_type': 'desktop', \n    'browser': 'Opera/9.32.(Windows 98; tig-ER) Presto/2.9.179 Version/10.00', \n    'operating_system': 'Android', \n    'product_code': 'S32_1268', \n    'product_line': 'Trucks and Buses',\n    'product_unitary_price': 96.31, \n    'quantity': 10, \n    'total_price': 963.1,\n    'traffic_source': 'www.hardin-green.com'\n}\n</code></pre>\n<p>Identify the <a href=\"https://nightlies.apache.org/flink/flink-docs-release-1.19/docs/dev/python/table/python_types/\">data type</a> of each field and see how the table will be created below. Note that you can set the <code>order_timestamp</code> field as <code>TIMESTAMP(0)</code>; this data type means the timestamp will have zero fractional digits in the seconds field, effectively truncating any millisecond, microsecond, or nanosecond parts. This means it represents a precise date and time down to the second.</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743577_2073093022",
+      "id": "paragraph_1717194610939_141192395",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:00:56+0000",
+      "dateFinished": "2024-08-22T13:00:56+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7874"
+    },
+    {
+      "text": "%flink.pyflink\ntable_env.execute_sql(\"DROP TABLE IF EXISTS source_stream;\")",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:52:09+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743577_1658574256",
+      "id": "paragraph_1717188915920_691808039",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:52:09+0000",
+      "dateFinished": "2024-08-22T12:52:10+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7875"
+    },
+    {
+      "text": "%flink.pyflink\n\ninput_table_name = \"source_stream\"\ntable_env.execute_sql(f\"DROP TABLE IF EXISTS {input_table_name};\")\n\ninput_stream_name = \"de-c3w3lab2-kinesis-input-stream\"\n\nregion=\"us-east-1\"\nsource_table_ddl = \"\"\"\n  CREATE TABLE {0} (\n    order_id STRING,\n    order_timestamp TIMESTAMP(0),\n    order_date STRING,\n    customer_number INT,\n    customer_visit_number INT,\n    customer_city STRING,\n    customer_country STRING,\n    customer_credit_limit INT,\n    device_type STRING,\n    browser STRING,\n    operating_system STRING,\n    product_code STRING, \n    product_line STRING,\n    product_unitary_price NUMERIC,\n    quantity INT, \n    total_price NUMERIC,\n    traffic_source STRING,\n    WATERMARK FOR order_timestamp AS order_timestamp - INTERVAL '5' MINUTES)\n    PARTITIONED BY (order_id)\n    WITH (\n    'connector' = 'kinesis',\n    'stream' = '{1}',\n    'aws.region' = '{2}',\n    'format' = 'json',\n    'scan.stream.initpos' = 'TRIM_HORIZON',\n    'json.timestamp-format.standard' = 'ISO-8601'\n    ) \"\"\".format(input_table_name, input_stream_name, region)\ntable_env.execute_sql(source_table_ddl)",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:52:18+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743577_1576129608",
+      "id": "paragraph_1717188994174_1675210540",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:52:19+0000",
+      "dateFinished": "2024-08-22T12:52:20+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7876"
+    },
+    {
+      "text": "%md\nIn the previous script you were already given with part of the creation query. You can see the following parts:\n* `WATERMARK` command, which is used in stream processing to handle late data and out-of-order events. Watermarks indicate the progress of event time in a stream. \n    * In the Watermark, the `FOR` clause specifies that the watermark is associated with the `order_timestamp` column.\n    * Furthermore, the `AS order_timestamp - INTERVAL '5' MINUTES` clause defines that the system expects events to arrive within 5 minutes of their event time. Events arriving later than 5 minutes are considered late.\n* `WITH` clause specifies the table's connector and other properties essential to define how Flink connects to the datasource. Between the most relevant ones you can find:\n    * `'connector' = 'kinesis'` specifies that the table will read from an AWS Kinesis stream.\n    * `'format' = 'json'` specifies that the data format of the stream is JSON.\n    * `'scan.stream.initpos' = 'TRIM_HORIZON'`. This specifies the initial position in the stream from which to start reading. `'TRIM_HORIZON`' means it will start reading from the earliest available record in the stream.\n    * `'json.timestamp-format.standard' = 'ISO-8601'` specifies that the timestamp format in the JSON data is ISO-8601.\n\nIf you want to know more about the connectors, you can check the [documentation](https://nightlies.apache.org/flink/flink-docs-release-1.13/docs/connectors/table/kinesis/).\n\n\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:04+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>In the previous script you were already given with part of the creation query. You can see the following parts:</p>\n<ul>\n<li><code>WATERMARK</code> command, which is used in stream processing to handle late data and out-of-order events. Watermarks indicate the progress of event time in a stream.\n<ul>\n<li>In the Watermark, the <code>FOR</code> clause specifies that the watermark is associated with the <code>order_timestamp</code> column.</li>\n<li>Furthermore, the <code>AS order_timestamp - INTERVAL '5' MINUTES</code> clause defines that the system expects events to arrive within 5 minutes of their event time. Events arriving later than 5 minutes are considered late.</li>\n</ul>\n</li>\n<li><code>WITH</code> clause specifies the table&rsquo;s connector and other properties essential to define how Flink connects to the datasource. Between the most relevant ones you can find:\n<ul>\n<li><code>'connector' = 'kinesis'</code> specifies that the table will read from an AWS Kinesis stream.</li>\n<li><code>'format' = 'json'</code> specifies that the data format of the stream is JSON.</li>\n<li><code>'scan.stream.initpos' = 'TRIM_HORIZON'</code>. This specifies the initial position in the stream from which to start reading. <code>'TRIM_HORIZON</code>&rsquo; means it will start reading from the earliest available record in the stream.</li>\n<li><code>'json.timestamp-format.standard' = 'ISO-8601'</code> specifies that the timestamp format in the JSON data is ISO-8601.</li>\n</ul>\n</li>\n</ul>\n<p>If you want to know more about the connectors, you can check the <a href=\"https://nightlies.apache.org/flink/flink-docs-release-1.13/docs/connectors/table/kinesis/\">documentation</a>.</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743577_170646030",
+      "id": "paragraph_1717692324946_945006694",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:04+0000",
+      "dateFinished": "2024-08-22T13:01:04+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7877"
+    },
+    {
+      "text": "%md\nNow, let's create an User Defined Function (UDF) to convert the timestamps into string. This is helpful as a workaround to save timestamps in AWS Kinesis.\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:10+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>Now, let&rsquo;s create an User Defined Function (UDF) to convert the timestamps into string. This is helpful as a workaround to save timestamps in AWS Kinesis.</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743577_2127461175",
+      "id": "paragraph_1717195417174_923360915",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:10+0000",
+      "dateFinished": "2024-08-22T13:01:10+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7878"
+    },
+    {
+      "text": "%flink.pyflink\n@udf(input_types=[DataTypes.TIMESTAMP(3)], result_type=DataTypes.STRING())\ndef to_string(i):\n    return str(i)\ntable_env.create_temporary_system_function(\"to_string\", to_string)\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:52:41+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743578_1167663890",
+      "id": "paragraph_1717195222307_1474053069",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:52:41+0000",
+      "dateFinished": "2024-08-22T12:52:42+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7879"
+    },
+    {
+      "text": "%md \nNow, you will create a sliding window table from your `source_stream`. Here you can use the sliding window query that you created when working with the local data sample to get the total number of sales. \nIn this case, define the window size to be of 6 minutes while the window slide to be of 3 minutes.",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:13+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>Now, you will create a sliding window table from your <code>source_stream</code>. Here you can use the sliding window query that you created when working with the local data sample to get the total number of sales.<br />\nIn this case, define the window size to be of 6 minutes while the window slide to be of 3 minutes.</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743578_309481145",
+      "id": "paragraph_1717195560844_1439834333",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:13+0000",
+      "dateFinished": "2024-08-22T13:01:13+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7880"
+    },
+    {
+      "text": "%flink.pyflink\n# Sliding window query\ninput_table = table_env.from_path(\"source_stream\")\nsliding_window_table = (\n        input_table.window(\n            Slide.over(lit(6).minute)\n            .every(lit(3).minutes)\n            .on(col(\"order_timestamp\"))\n            .alias(\"six_minute_window\")\n        )\n        .group_by(col(\"six_minute_window\"))\n        .select(to_string(col(\"six_minute_window\").end).alias(\"event_time\"), col(\"total_price\").sum.alias(\"total_sales\"))\n    )",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:52:55+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743578_1966118395",
+      "id": "paragraph_1717195543298_217017583",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:52:55+0000",
+      "dateFinished": "2024-08-22T12:52:56+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7881"
+    },
+    {
+      "text": "%md\nCreate a temporary view in your table environment based on the sliding window table that you created.\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:16+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>Create a temporary view in your table environment based on the sliding window table that you created.</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743578_2119321879",
+      "id": "paragraph_1717195964444_1357391727",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:16+0000",
+      "dateFinished": "2024-08-22T13:01:16+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7882"
+    },
+    {
+      "text": "%flink.pyflink\ntable_env.create_temporary_view(\"sliding_window_table\", sliding_window_table)",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:53:01+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743579_1498887865",
+      "id": "paragraph_1717195971043_1315152928",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:53:01+0000",
+      "dateFinished": "2024-08-22T12:53:02+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7883"
+    },
+    {
+      "text": "%md \nIn the next cell, you have to define the schema of your sink table, which will be actually one of the output AWS Kinesis data streams that have been created for you. You can set the `event_time` field as a string by simplicity. Use the `de-c3w3lab2-kinesis-total-sales-slide-output-stream` output stream and name your output table as `\"output_sliding_sales_stream\"`",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:20+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>In the next cell, you have to define the schema of your sink table, which will be actually one of the output AWS Kinesis data streams that have been created for you. You can set the <code>event_time</code> field as a string by simplicity. Use the <code>de-c3w3lab2-kinesis-total-sales-slide-output-stream</code> output stream and name your output table as <code>&quot;output_sliding_sales_stream&quot;</code></p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743579_1695767652",
+      "id": "paragraph_1717195545025_525391782",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:20+0000",
+      "dateFinished": "2024-08-22T13:01:20+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7884"
+    },
+    {
+      "text": "%flink.pyflink\n\ntable_name = \"output_sliding_sales_stream\"\ntable_env.execute_sql(f\"DROP TABLE IF EXISTS {table_name};\")\n\nstream_name = \"de-c3w3lab2-kinesis-total-sales-slide-output-stream\"\n\nregion=\"us-east-1\"\nsource_table_ddl = \"\"\"\n CREATE TABLE {0} (\n    event_time STRING,\n    total_sales NUMERIC)\n\n    WITH (\n    'connector' = 'kinesis',\n    'stream' = '{1}',\n    'aws.region' = '{2}',\n    'format' = 'json',\n    'json.timestamp-format.standard' = 'ISO-8601'\n    ) \"\"\".format(table_name, stream_name, region)\ntable_env.execute_sql(source_table_ddl)",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:53:25+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743579_1901820512",
+      "id": "paragraph_1717195605588_245499981",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:53:25+0000",
+      "dateFinished": "2024-08-22T12:53:25+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7885"
+    },
+    {
+      "text": "%md \nAfter you have defined the schema in your output table, insert the data from the sliding window table into your sink:",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:23+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>After you have defined the schema in your output table, insert the data from the sliding window table into your sink:</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743580_1180332298",
+      "id": "paragraph_1717195875142_1401672692",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:23+0000",
+      "dateFinished": "2024-08-22T13:01:23+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7886"
+    },
+    {
+      "text": "%flink.pyflink\ntable_result = table_env.execute_sql(\"INSERT INTO {0} SELECT * FROM {1}\"\n                                     .format(\"output_sliding_sales_stream\", \"sliding_window_table\"))\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:57:30+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "editorHide": false,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "FLINK JOB",
+          "tooltip": "View in Flink web UI",
+          "group": "flink",
+          "values": [
+            {
+              "jobUrl": "/flinkdashboard/#/job/b54fd788c06ad13fc4b2be4e89524e9f",
+              "$$hashKey": "object:9397"
+            }
+          ],
+          "interpreterSettingId": "flink"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743580_1600859175",
+      "id": "paragraph_1717195940048_1961540191",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:57:30+0000",
+      "dateFinished": "2024-08-22T12:58:15+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7887"
+    },
+    {
+      "text": "%md \nAfter you execute the previous cell, you will see in the upper right side of that cell that appeared an option to open a `Flink Job`. Click on it and another tab will be open where you can interact with the Flink GUI. \nThis interface shows the state of the Flink jobs and will even allow you to take a look to the data. \n\nIn this lab, you will use the consumer provided to you. Go to Cloud9 and run the following commands to activate the environment and run the consumer script:\n\n```bash\nsource jupyterlab-venv/bin/activate\npython3 scripts/consumer/src/consumer.py de-c3w3lab2-kinesis-total-sales-slide-output-stream\n```\n\nYou should start seeing some processed records with the schema that you just generated and should look similar to this output:\n\n```json\n{'event_time': '2024-06-01 01:00:00', 'total_sales': 25385}\n```",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:26+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>After you execute the previous cell, you will see in the upper right side of that cell that appeared an option to open a <code>Flink Job</code>. Click on it and another tab will be open where you can interact with the Flink GUI.<br />\nThis interface shows the state of the Flink jobs and will even allow you to take a look to the data.</p>\n<p>In this lab, you will use the consumer provided to you. Go to Cloud9 and run the following commands to activate the environment and run the consumer script:</p>\n<pre><code class=\"language-bash\">source jupyterlab-venv/bin/activate\npython3 scripts/consumer/src/consumer.py de-c3w3lab2-kinesis-total-sales-slide-output-stream\n</code></pre>\n<p>You should start seeing some processed records with the schema that you just generated and should look similar to this output:</p>\n<pre><code class=\"language-json\">{'event_time': '2024-06-01 01:00:00', 'total_sales': 25385}\n</code></pre>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743581_8946751",
+      "id": "paragraph_1717195843029_1674996202",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:26+0000",
+      "dateFinished": "2024-08-22T13:01:26+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7888"
+    },
+    {
+      "text": "%md\nGreat! You have created your first sliding window query over a datastream! The next step for you is to create another sliding window query that allows you to get the number of orders per device type. For that, follow these instructions:\n* Create an `input_table` from your `\"source_stream\"` table.\n* From `input_table` create a window with a size of 6 minutes and a slide of 3 minutes on the `order_timestamp` column. Name this column as ``six_minute_window`.\n* Then, group by the columns: `six_minute_window` and `device_type`. Remember to use the `col` function to reference columns in the table.\n* Then, select the `six_minute_window` column, cast it as string and save it as `event_time`. Select also your `device_type` column and count `order_id`; save it as `orders_count`\n\nSave your query table to `orders_by_device_window_table`.",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:04:26+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>Great! You have created your first sliding window query over a datastream! The next step for you is to create another sliding window query that allows you to get the number of orders per device type. For that, follow these instructions:</p>\n<ul>\n<li>Create an <code>input_table</code> from your <code>&quot;source_stream&quot;</code> table.</li>\n<li>From <code>input_table</code> create a window with a size of 6 minutes and a slide of 3 minutes on the <code>order_timestamp</code> column. Name this column as ``six_minute_window`.</li>\n<li>Then, group by the columns: <code>six_minute_window</code> and <code>device_type</code>. Remember to use the <code>col</code> function to reference columns in the table.</li>\n<li>Then, select the <code>six_minute_window</code> column, cast it as string and save it as <code>event_time</code>. Select also your <code>device_type</code> column and count <code>order_id</code>; save it as <code>orders_count</code></li>\n</ul>\n<p>Save your query table to <code>orders_by_device_window_table</code>.</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743581_2124294921",
+      "id": "paragraph_1717530450078_596518767",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:04:26+0000",
+      "dateFinished": "2024-08-22T13:04:26+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7889"
+    },
+    {
+      "text": "%flink.pyflink\ninput_table = table_env.from_path(\"None\")\n\norders_by_device_window_table = (\n    None.window(\n        None.None(None(None).minute)\n        .None(lit(3).minutes)\n        .on(col(\"order_timestamp\"))\n        .alias(\"six_minute_window\")\n    )\n    .group_by(col(\"None\"), col(\"None\"))\n    .select(\n        to_string(col(\"None\").end).alias(\"None\"),\n        col(\"None\"),\n        col(\"None\").count.alias(\"orders_count\")\n    )\n)\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:04:46+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743582_923032120",
+      "id": "paragraph_1717530452436_1561032340",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:58:08+0000",
+      "dateFinished": "2024-08-22T12:58:15+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7890"
+    },
+    {
+      "text": "%md\nCreate the temporary view from your output table. Name it as `orders_by_device_window_table`",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:05:01+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>Create the temporary view from your output table. Name it as <code>orders_by_device_window_table</code></p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743582_816290784",
+      "id": "paragraph_1717694103194_1967215768",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:05:01+0000",
+      "dateFinished": "2024-08-22T13:05:01+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7891"
+    },
+    {
+      "text": "%flink.pyflink\ntable_env.create_temporary_view(\"None\", orders_by_device_window_table)\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:05:13+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743582_1936632219",
+      "id": "paragraph_1717530624437_389965079",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:58:18+0000",
+      "dateFinished": "2024-08-22T12:58:19+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7892"
+    },
+    {
+      "text": "%md\nNow, create the schema of your output: \n* The table name should be `output_device_sliding_stream`\n* Your schema should include the following columns: `event_time` as string, `device_type` also as string, and `orders_count` as a numeric value.\n* Remember to set your connector to `kinesis`.\n* Your output stream name is `de-c3w3lab2-kinesis-devices-output-stream`.",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:38+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>Now, create the schema of your output:</p>\n<ul>\n<li>The table name should be <code>output_device_sliding_stream</code></li>\n<li>Your schema should include the following columns: <code>event_time</code> as string, <code>device_type</code> also as string, and <code>orders_count</code> as a numeric value.</li>\n<li>Remember to set your connector to <code>kinesis</code>.</li>\n<li>Your output stream name is <code>de-c3w3lab2-kinesis-devices-output-stream</code>.</li>\n</ul>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743582_2145852122",
+      "id": "paragraph_1717694145080_487878447",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:38+0000",
+      "dateFinished": "2024-08-22T13:01:38+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7893"
+    },
+    {
+      "text": "%flink.pyflink\n\ntable_name = \"None\"\ntable_env.execute_sql(f\"DROP TABLE IF EXISTS {table_name};\")\n\nstream_name = \"de-c3w3lab2-kinesis-devices-output-stream\"\n\nregion=\"us-east-1\"\nsource_table_ddl = \"\"\"\n CREATE TABLE {0} (\n    None STRING,\n    None STRING,\n    None NUMERIC)\n\n    WITH (\n    'connector' = 'None',\n    'stream' = '{1}',\n    'aws.region' = '{2}',\n    'format' = 'json',\n    'json.timestamp-format.standard' = 'ISO-8601'\n    ) \"\"\".format(table_name, stream_name, region)\ntable_env.execute_sql(source_table_ddl)",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:05:58+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743582_1918573027",
+      "id": "paragraph_1717530975837_1021536133",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:58:33+0000",
+      "dateFinished": "2024-08-22T12:58:34+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7894"
+    },
+    {
+      "text": "%md\nWith your output schema created, start inserting data from your sliding window table into your output table. Remember to open the `Flink job` once it is available and to run your consumer from your Cloud9 instance with\n\n```bash\npython3 scripts/consumer/src/consumer.py  de-c3w3lab2-kinesis-devices-output-stream\n```\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:42+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>With your output schema created, start inserting data from your sliding window table into your output table. Remember to open the <code>Flink job</code> once it is available and to run your consumer from your Cloud9 instance with</p>\n<pre><code class=\"language-bash\">python3 scripts/consumer/src/consumer.py  de-c3w3lab2-kinesis-devices-output-stream\n</code></pre>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743583_1607807626",
+      "id": "paragraph_1717694259229_1997881844",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:42+0000",
+      "dateFinished": "2024-08-22T13:01:42+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7895"
+    },
+    {
+      "text": "%flink.pyflink\ntable_result = table_env.execute_sql(\"INSERT INTO {0} SELECT * FROM {1}\"\n                                     .format(\"output_device_sliding_stream\", \"orders_by_device_window_table\"))",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T12:59:20+0000",
+      "progress": 0,
+      "config": {
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {
+        "jobUrl": {
+          "propertyName": "jobUrl",
+          "label": "FLINK JOB",
+          "tooltip": "View in Flink web UI",
+          "group": "flink",
+          "values": [
+            {
+              "jobUrl": "/flinkdashboard/#/job/f757679d27ef5244b9488f5eb033f929",
+              "$$hashKey": "object:9801"
+            }
+          ],
+          "interpreterSettingId": "flink"
+        }
+      },
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743584_1417020967",
+      "id": "paragraph_1717531188071_1502504620",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T12:59:20+0000",
+      "dateFinished": "2024-08-22T12:59:59+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7896"
+    },
+    {
+      "text": "%md\n\nIn this lab, you explored the capabilities of PyFlink within a Zeppelin notebook to perform advanced stream processing tasks. By creating sliding window and tumbled window queries, you gained hands-on experience with two fundamental types of window operations used in stream processing:\n* Sliding Windows: You learned how to create sliding window queries that allow for overlapping time intervals, providing a continuous and detailed view of your data over time. This is useful for real-time monitoring and detecting trends.\n* Tumbled Windows: You implemented tumbled window queries, which divide the stream into non-overlapping, fixed-size windows. This is ideal for periodic reporting and aggregating data over uniform intervals.\n \nYou applied windowing functions to simulate real-time analytics scenarios, such as summarizing data over time windows. By working with event time attributes and defining watermarks, you ensured accurate and timely processing of out-of-order events, which is critical for reliable stream processing.\n\nThe ability to process and analyze streaming data in real time is a valuable asset in today's data-driven world, opening up opportunities for innovation and insights in various domains.\n",
+      "user": "anonymous",
+      "dateUpdated": "2024-08-22T13:01:47+0000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9,
+        "editorHide": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>In this lab, you explored the capabilities of PyFlink within a Zeppelin notebook to perform advanced stream processing tasks. By creating sliding window and tumbled window queries, you gained hands-on experience with two fundamental types of window operations used in stream processing:</p>\n<ul>\n<li>Sliding Windows: You learned how to create sliding window queries that allow for overlapping time intervals, providing a continuous and detailed view of your data over time. This is useful for real-time monitoring and detecting trends.</li>\n<li>Tumbled Windows: You implemented tumbled window queries, which divide the stream into non-overlapping, fixed-size windows. This is ideal for periodic reporting and aggregating data over uniform intervals.</li>\n</ul>\n<p>You applied windowing functions to simulate real-time analytics scenarios, such as summarizing data over time windows. By working with event time attributes and defining watermarks, you ensured accurate and timely processing of out-of-order events, which is critical for reliable stream processing.</p>\n<p>The ability to process and analyze streaming data in real time is a valuable asset in today&rsquo;s data-driven world, opening up opportunities for innovation and insights in various domains.</p>\n\n</div>"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1724330743584_1363854006",
+      "id": "paragraph_1717694304479_49646329",
+      "dateCreated": "2024-08-22T12:45:43+0000",
+      "dateStarted": "2024-08-22T13:01:47+0000",
+      "dateFinished": "2024-08-22T13:01:47+0000",
+      "status": "FINISHED",
+      "$$hashKey": "object:7897"
+    }
+  ],
+  "name": "Streaming Queries with Apache Flink",
+  "id": "2K7187XBX",
+  "defaultInterpreterGroup": "flink",
+  "version": "0.10.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/Streaming Queries with Apache Flink"
+}

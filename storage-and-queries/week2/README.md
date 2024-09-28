@@ -5,3 +5,8 @@ This week explains key architectural ideas about Warehouse and Lakehouses. The f
 To replicate the lab, you may have to create jupyter environment using Cloud 9. The scripts can be executed using `source scripts/setup_jupyter_env.sh`.
 
 - [Lab 1 - Data Lake with AWS Glue](labs/lab1/C3_W2_Lab_1_Data_Lake_Solution.ipynb)
+
+TODO
+- [Lab 2 - Building Data Lakehouse with AWS Lake Formation and Iceberg](labs/lab2/lab.html) with its [Assignment Solution](labs/lab2/C3_W2_Assignment_Solution.ipynb)
+
+- [Quiz](quiz.html)
