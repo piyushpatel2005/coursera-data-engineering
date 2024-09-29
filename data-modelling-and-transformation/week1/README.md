@@ -25,6 +25,6 @@ It consists of three layers. staging, enterprise data warehouse and then informa
 3. Satellite: contains attributes that provide context for hubs and links.
 
 
-- [Model the Normalized Data to Star Schema](labs/lab2/C4_W1_Assignment_Solution.ipynb)
+- [Model the Normalized Data to Star Schema](labs/lab2/C4_W1_Assignment_Solution.md)
 
 - [Quiz](quiz.html)

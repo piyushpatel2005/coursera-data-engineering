@@ -16,4 +16,4 @@
 
  `source scripts/setup_jupyter_env.sh`
 
-- Open the notebook [C3_W1_Assignment.ipynb](C3_W1_Assignment_Solution.ipynb) and follow the instructions there.
+- Open the notebook [C3_W1_Assignment.ipynb](C3_W1_Assignment_Solution.md) and follow the instructions there.
