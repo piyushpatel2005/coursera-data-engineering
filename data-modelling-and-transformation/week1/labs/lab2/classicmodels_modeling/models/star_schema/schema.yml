@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: fact_orders
+    description: "Fact Orders"
+    columns:
+      - name: fact_order_key
+        description: The primary key for this table
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_key
+      - name: employee_key
+      - name: office_code
+      - name: product_key
+      - name: order_date
+      - name: order_required_date
+      - name: order_shipped_date
+      - name: quantity_ordered
+      - name: product_price
+      
+  - name: dim_customers
+    description: "Customer dimension"
+    columns:
+      - name: customer_key
+        description: The primary key for this table
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_name
+      - name: customer_last_name
+      - name: customer_first_name
+      - name: phone
+      - name: address_line_1
+      - name: address_line_2
+      - name: postal_code
+      - name: city
+      - name: state
+      - name: country
+      - name: credit_limit

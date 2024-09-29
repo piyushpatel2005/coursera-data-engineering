@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: fact_orders
+    description: "Fact Orders"
+    columns:
+      - name: fact_order_key
+        description: The primary key for this table
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_key
+      - name: employee_key
+      - name: office_code
+      - name: product_key
+      - name: order_date
+      - name: order_required_date
+      - name: order_shipped_date
+      - name: quantity_ordered
+      - name: product_price
+      
+  - name: dim_customers
+    description: "Customer dimension"
+    columns:
+      - name: customer_key
+        description: The primary key for this table
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_name
+      - name: customer_last_name
+      - name: customer_first_name
+      - name: phone
+      - name: address_line_1
+      - name: address_line_2
+      - name: postal_code
+      - name: city
+      - name: state
+      - name: country
+      - name: credit_limit
+  - name: dim_employees
+    description: "Employee dimension"
+    columns:
+      - name: employee_key
+        description: The primary key for this table
+        data_tests:
+          - unique
+          - not_null
+      - name: employee_last_name
+      - name: employee_first_name
+      - name: job_title
+      - name: email
+  - name: dim_offices
+    description: "Office dimension"
+    columns:
+      - name: office_key
+        description: The primary key for this table
+        data_tests:
+          - unique
+          - not_null
+      - name: postal_code
+      - name: city
+      - name: state
+      - name: country
+      - name: territory
+  - name: dim_products
+    description: "Product dimension"
+    columns:
+      - name: product_key
+        description: The primary key for this table
+        data_tests:
+          - unique
+          - not_null
+      - name: product_name
+      - name: product_line
+      - name: product_scale
+      - name: product_vendor
+      - name: product_description
+      - name: product_line_description
+  - name: dim_dates
+    columns:
+      - name: date_day
+        description: The primary key for this table
+        data_tests:
+          - unique
+          - not_null
+      - name: day_of_week
+      - name: day_of_month
+      - name: day_of_year
+      - name: week_of_year
+      - name: month_of_year
+      - name: month_name
+      - name: quarter_of_year
+      - name: year_number

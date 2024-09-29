@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: orders_obt
+    description: "Orders One Big Table"
+    columns:
+      - name: order_number
+      - name: order_line_number
+      - name: product_name
+      - name: product_scale
+      - name: product_vendor
+      - name: product_description
+      - name: product_buy_price
+      - name: product_msrp
+      - name: product_line
+      - name: quantity_ordered
+      - name: product_price
+      - name: order_date
+      - name: order_required_date
+      - name: order_shipped_date
+      - name: customer_name
+      - name: customer_city
+      - name: customer_state
+      - name: customer_postal_code
+      - name: customer_credit_limit
+      - name: sales_rep_first_name
+      - name: sales_rep_last_name
+      - name: sales_rep_title
+      - name: order_status
+      - name: order_comments
+    data_tests:
+    - dbt_utils.unique_combination_of_columns:
+        combination_of_columns:
+        - order_number
+        - order_line_number

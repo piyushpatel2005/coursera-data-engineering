@@ -1,0 +1,12 @@
+classicmodels_modeling:
+  target: dev  
+  outputs:
+    dev:
+      type: postgres
+      threads: 1
+      host: de-c4w1a1-rds.cnyk6684iouz.us-east-1.rds.amazonaws.com
+      port: 5432  # optional
+      dbname: postgres
+      schema: classicmodels
+      user: postgresuser
+      password: adminpwrd    
