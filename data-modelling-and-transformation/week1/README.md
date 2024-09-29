@@ -5,7 +5,7 @@ This week covers introduction to data modelling in Analytics databases along wit
 These includes normalization, star schema. This week also has labs on normalization and data modelling using DBT.
 
 
-- [Lab 1 - Data Normalization](labs/lab1/C4_W1_Lab_1_Data_Normalization_Solution.ipynb)
+- [Lab 1 - Data Normalization](labs/lab1/C4_W1_Lab_1_Data_Normalization_Solution.md)
 
 ## Inmon Data Modelling
 
@@ -25,6 +25,6 @@ It consists of three layers. staging, enterprise data warehouse and then informa
 3. Satellite: contains attributes that provide context for hubs and links.
 
 
-- [Model the Normalized Data to Star Schema](labs/lab2/C4_W1_Assignment_Solution.md)
+- [Assignment: Model the Normalized Data to Star Schema](labs/lab2/C4_W1_Assignment_Solution.md)
 
 - [Quiz](quiz.html)
