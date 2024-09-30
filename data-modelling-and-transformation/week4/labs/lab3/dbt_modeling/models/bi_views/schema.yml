@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  - name: sales_per_country_vw
+    description: "Sales per country view"
+    columns:
+      - name: session_month
+      - name: session_year
+      - name: country_code
+      - name: total_sales

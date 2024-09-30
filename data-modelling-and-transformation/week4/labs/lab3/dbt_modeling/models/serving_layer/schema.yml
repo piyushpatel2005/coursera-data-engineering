@@ -1,0 +1,51 @@
+
+version: 2
+
+models:
+  - name: fact_session
+    description: "Fact session table"
+    columns:
+      - name: session_id
+        description: "The primary key for this table"
+        data_tests:
+          - unique
+          - not_null
+      - name: user_id
+      - name: song_id
+      - name: artist_id
+      - name: price
+      - name: liked
+      - name: liked_since
+      - name: session_start_time
+  - name: dim_songs
+    description: "Song dimensional table"
+    columns:
+      - name: song_id
+        description: "The primary key for this table"
+      - name: track_id
+      - name: title
+      - name: release
+      - name: year
+  - name: dim_artists
+    description: "Artist dimensional table"
+    columns:
+      - name: artist_id
+        description: "The primary key for this table"
+        data_tests:
+          - unique
+          - not_null
+      - name: artist_mbid
+      - name: artist_name
+  - name: dim_users
+    description: "Users dimensional table"
+    columns:
+      - name: user_id
+        description: "The primary key for this table"
+        data_tests:
+          - unique
+          - not_null
+      - name: user_lastname
+      - name: user_name
+      - name: user_since
+      - name: place_name
+      - name: country_code
