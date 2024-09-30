@@ -6,7 +6,7 @@ The Data Engineering undercurrents also cover concepts like Security, DataOps, D
 
 Finally, this week included a lab for building end-to-end data pipeline ingesting data from RDBMS using Glue job and extracting metadata using Glue crawlers and finally querying this data using Athena. This lab also builds infrastructure using Terraform.
 
-[Quiz](quiz.html)
+- [Quiz](quiz.html)
 
 ```shell
 aws s3 cp --recursive s3://dlai-data-engineering/labs/c1w2-187976/ ./

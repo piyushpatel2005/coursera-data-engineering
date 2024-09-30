@@ -11,6 +11,6 @@ You can download files using below as per instructions.
 aws s3 cp --recursive s3://dlai-data-engineering/labs/c1w4-242820/ ./
 ```
 
-[Quiz About Choosing Technology](quiz1.html)
+- [Quiz About Choosing Technology](quiz1.html)
 
-[Week Quiz](quiz.html)
+- [Week Quiz](quiz.html)

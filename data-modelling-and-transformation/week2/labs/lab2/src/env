@@ -1,0 +1,5 @@
+DBHOST=de-c4w2a1-rds.ct8as68mcml8.us-east-1.rds.amazonaws.com
+DBUSER = postgresuser
+DBPASSWORD = adminpwrd
+DBPORT = 5432
+DBNAME = aws_reviews

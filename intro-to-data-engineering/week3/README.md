@@ -4,6 +4,6 @@ This week covers Data architecture and how to choose the right technologies for 
 
 This week's lab is about non-functional requirements of adding scalability, monitoring, reliability, etc.
 
-[Lab](lab.html)
+- [Lab](lab.html)
 
-[Quiz](quiz.html)
+- [Quiz](quiz.html)
